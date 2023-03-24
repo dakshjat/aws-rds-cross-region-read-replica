@@ -1,0 +1,174 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Amazon RDS for Oracle Cross-region Read Replica
+Parameters:
+  Name:
+    Type: String
+    Description: Application Name
+  Environment:
+    Type: String
+    Description: Application Environment Name
+  VpcId:
+    Type: String
+    Description: The ID of the VPC 
+  SubnetId1:
+    Type: String
+    Description: The EC2 Subnet IDs for the DB subnet group
+  SubnetId2:
+    Type: String
+    Description: The EC2 Subnet IDs for the DB subnet group
+  DBInstanceClass:
+    Type: String
+    Description: The compute and memory capacity of the DB instance
+    Default: db.m5.large
+  AllocatedStorage:
+    Type: Number
+    Description: The amount of storage in gibibytes (GiB) to be initially allocated for the database instance
+  StorageType:
+    Type: String
+    Description: The storage type to be associated with the DB instance.
+  EnableCloudwatchLogsExports:
+    Type: String
+    Description: The list of log types that need to be enabled for exporting to CloudWatch Logs
+  Family:
+    Type: String
+    Description: The DB parameter group family name
+  MultiAZ:
+    Type: String
+    Description: The database instance is a Multi-AZ DB instance deployment
+  Port:
+    Type: Number
+    Description: The port number on which the database accepts connections.
+  SourceDBInstanceIdentifier:
+    Type: String
+    Description: The ID of the source DB instance
+  SourceRegion:
+    Type: String
+    Description: The ID of the region that contains the source DB instance for the read replica
+  ReplicaMode:
+    Type: String
+    Description: The open mode of an Oracle read replica - open-read-only OR mounted
+  CopyTagsToSnapshot:
+    Type: String
+    Description: Copy tags from the DB instance to snapshots of the DB instance
+  StorageEncrypted:
+    Type: String
+    Description: A value that indicates whether the DB instance is encrypted
+  AutoMinorVersionUpgrade:
+    Type: String
+    Description: A value that indicates whether minor engine upgrades are applied automatically to the DB instance during the maintenance window
+  AllowMajorVersionUpgrade:
+    Type: String
+    Description: A value that indicates whether major version upgrades are allowed
+  PubliclyAccessible:
+    Type: String
+    Description: Whether the read replica should have a publicly accessible endpoint
+    AllowedValues: [true, false]
+    Default: false   
+  PreferredBackupWindow:
+    Type: String
+    Description: The daily time range during which automated backups are created if automated backups are enabled
+  BackupRetentionPeriod:
+    Type: String
+    Description: The number of days for which automated backups are retained
+  DeleteAutomatedBackups:
+    Type: String
+    Description: A value that indicates whether to remove automated backups immediately after the DB instance is deleted
+
+Resources:
+  EncryptionKey:
+      Type: AWS::KMS::Key
+      Properties:
+        EnableKeyRotation: true
+        KeyPolicy:
+          Version: 2012-10-17
+          Id: key-rds
+          Statement:
+            - Effect: Allow
+              Principal:
+                AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+              Action: 'kms:*'
+              Resource: '*'
+  EncryptionKeyAlias:
+      Type: AWS::KMS::Alias
+      Properties:
+        AliasName: !Sub 'alias/${Environment}-${Name}'
+        TargetKeyId:
+          Ref: EncryptionKey
+  DBParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: Oracle Parameter Group
+      Family:
+        Ref: Family
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub '${Environment} ${Name} DB security group'
+      GroupName: !Sub '${Environment}-${Name}-sg'
+      SecurityGroupIngress:
+      - CidrIp: 10.0.0.0/28
+        FromPort:
+          Ref: Port
+        ToPort:
+          Ref: Port
+        IpProtocol: tcp
+        Description: Services
+      VpcId:
+        Ref: VpcId
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnets available for the RDS DB Instance
+      SubnetIds:
+      - Ref: SubnetId1
+      - Ref: SubnetId2
+  DBInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      KmsKeyId: !Ref EncryptionKey
+      SourceDBInstanceIdentifier: !Ref SourceDBInstanceIdentifier
+      SourceRegion: !Ref SourceRegion
+      ReplicaMode: !Ref ReplicaMode
+      EnableCloudwatchLogsExports:
+        - Ref: EnableCloudwatchLogsExports
+      CopyTagsToSnapshot: !Ref CopyTagsToSnapshot
+      AllocatedStorage:
+        Ref: AllocatedStorage
+      StorageType:
+        Ref: StorageType
+      DBInstanceClass:
+        Ref: DBInstanceClass
+      LicenseModel: bring-your-own-license
+      PubliclyAccessible: 'false'
+      Port:
+        Ref: Port
+      AutoMinorVersionUpgrade: !Ref AutoMinorVersionUpgrade
+      AllowMajorVersionUpgrade: !Ref AllowMajorVersionUpgrade
+      PreferredMaintenanceWindow: sun:10:00-sun:10:30
+      MultiAZ: !Ref MultiAZ
+      DBInstanceIdentifier: !Sub '${Environment}-${Name}'
+      DBSubnetGroupName:
+        Ref: DBSubnetGroup
+      DBParameterGroupName:
+        Ref: DBParameterGroup
+      VPCSecurityGroups:
+      - Ref: DBSecurityGroup
+      StorageEncrypted: !Ref StorageEncrypted
+      PreferredBackupWindow: !Ref PreferredBackupWindow
+      BackupRetentionPeriod: !Ref BackupRetentionPeriod
+      DeleteAutomatedBackups: !Ref DeleteAutomatedBackups
+
+Outputs:
+  RdsDBHost:
+    Description: DB Endpoint
+    Value:
+      Fn::GetAtt:
+      - DBInstance
+      - Endpoint.Address
+  RdsDBPort:
+    Description: DB Instance Port
+    Value:
+      Fn::GetAtt:
+      - DBInstance
+      - Endpoint.Port

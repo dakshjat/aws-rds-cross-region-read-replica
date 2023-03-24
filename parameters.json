@@ -1,0 +1,26 @@
+{
+  "Parameters": {
+      "Name": "<Name>",
+      "Environment": "<Environment>",
+      "VpcId": "<VpcId>",
+      "SubnetId1": "<SubnetId1>",
+      "SubnetId2":  "<SubnetId2>",
+      "DBInstanceClass": "<DBInstanceClass>",
+      "AllocatedStorage": "<AllocatedStorage>",
+      "StorageType": "<StorageType>",
+      "EnableCloudwatchLogsExports": "<EnableCloudwatchLogsExports>",
+      "Family": "oracle-ee-<version>",
+      "MultiAZ": "<MultiAZ>",
+      "Port": "<Port>",
+      "ReplicaMode": "<ReplicaMode>",
+      "CopyTagsToSnapshot": "<CopyTagsToSnapshot>",
+      "AutoMinorVersionUpgrade": "<AutoMinorVersionUpgrade>",
+      "AllowMajorVersionUpgrade": "<AllowMajorVersionUpgrade>",
+      "StorageEncrypted": "<StorageEncrypted>",
+      "PreferredBackupWindow": "<PreferredBackupWindow>",
+      "BackupRetentionPeriod": "<BackupRetentionPeriod>",
+      "DeleteAutomatedBackups": "<DeleteAutomatedBackups>",
+      "SourceDBInstanceIdentifier":  "<SourceDBInstanceIdentifier>",
+      "SourceRegion": "<SourceRegion>"
+  }
+}
